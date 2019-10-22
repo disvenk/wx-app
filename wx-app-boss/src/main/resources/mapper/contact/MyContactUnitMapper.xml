@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.phone.erp.boss.mapper.contact.MyContactUnitMapper">
+<!-- 获取我的往来主页分页集合 -->
+<select id="getPageData" resultType="com.phone.erp.boss.vo.contact.MyContactUnitVo">
+    WITH TEMP AS (SELECT
+                  T.CONTACTSUNIT_ID                                 AS  ID,
+                  TCU.NAME                                          AS  NAME,
+                  TCU.CODE                                          AS  CODE,
+                  DECODE(T.PAY_TYPE, 1, T.AMOUNT * T.RATIO, 0)      AS  PRERECEIVABLEAMOUNT,
+                  DECODE(T.PAY_TYPE, 2, T.AMOUNT * T.RATIO, 0)      AS  PREPAYMENTAMOUNT,
+                  DECODE(T.PAY_TYPE, 3, T.AMOUNT * T.RATIO, 0)      AS  PAYABLEAMOUNT,
+                  DECODE(T.PAY_TYPE, 4, T.AMOUNT * T.RATIO, 0)      AS  RECEIVABLEAMOUNT,
+                  DECODE(T.PAY_TYPE, 4, T.AMOUNT * T.RATIO, 0)-DECODE(T.PAY_TYPE, 1, T.AMOUNT * T.RATIO, 0)-DECODE(T.PAY_TYPE, 3, T.AMOUNT * T.RATIO, 0)+DECODE(T.PAY_TYPE, 2, T.AMOUNT * T.RATIO, 0)   AS SUMRECEIVABLEAMOUNT
+              FROM I_CASH_ACCOUNT_MAIN T
+              JOIN T_CONTACT_UNIT TCU ON T.CONTACTSUNIT_ID = TCU.ID AND TCU.STATUS=0
+              WHERE t.COMPANY_ID IN (${companyId})
+                    AND T.HX_STATUS in(0,1)
+                    <if test="null!=keyWord">
+                            AND (UPPER(TCU.NAME) LIKE UPPER('%${keyWord}%') OR UPPER(TCU.CODE) LIKE UPPER('%${keyWord}%') )
+                    </if>
+                      )
+            SELECT     SUM(PRERECEIVABLEAMOUNT) PRERECEIVABLEAMOUNT,
+                        SUM(PREPAYMENTAMOUNT) PREPAYMENTAMOUNT,
+                        SUM(PAYABLEAMOUNT) PAYABLEAMOUNT,
+                        SUM(RECEIVABLEAMOUNT) RECEIVABLEAMOUNT,
+                        SUM(SUMRECEIVABLEAMOUNT) SUMRECEIVABLEAMOUNT,
+                        ID,
+                        NAME,
+                        CODE
+                    FROM TEMP
+                    GROUP BY ID,NAME,CODE
+                    ORDER BY NAME
+</select>
+<!-- 获取我的往来主页总计行对象 -->
+    <select id="getTotalVo" resultType="com.phone.erp.boss.vo.contact.MyContactUnitVo">
+        SELECT
+            SUM(DECODE(T.PAY_TYPE, 4, T.AMOUNT * T.RATIO, 0)-DECODE(T.PAY_TYPE, 1, T.AMOUNT * T.RATIO, 0)-DECODE(T.PAY_TYPE, 3, T.AMOUNT * T.RATIO, 0)+DECODE(T.PAY_TYPE, 2, T.AMOUNT * T.RATIO, 0))   AS SUMRECEIVABLEAMOUNT
+        FROM I_CASH_ACCOUNT_MAIN T
+            JOIN T_CONTACT_UNIT TCU ON T.CONTACTSUNIT_ID = TCU.ID AND TCU.STATUS=0
+        WHERE t.COMPANY_ID IN (${companyId})
+              AND T.HX_STATUS in(0,1)
+            <if test="null!=keyWord">
+                AND (UPPER(TCU.NAME) LIKE UPPER('%${keyWord}%') OR UPPER(TCU.CODE) LIKE UPPER('%${keyWord}%') )
+            </if>
+    </select>
+</mapper>

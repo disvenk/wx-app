@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.phone.erp.boss.mapper.contact.RetailPayMapper">
+<!-- 营业款 -->
+
+    <!-- 公共查询条件 -->
+    	<sql id="queryCondition">
+        			 where
+                       T.COMPANY_ID IN(${companyIds})
+                      AND t.BILLS_DATE = to_date(#{startDate},'YYYY-MM-DD')
+                      AND T.SECTION_ID IN(${sectionIds})
+                    <if test="null!=keyWord">
+                        AND (UPPER(TS.NAME) LIKE UPPER('%${keyWord}%') OR UPPER(TS.CODE) LIKE UPPER('%${keyWord}%') )
+                    </if>
+    	</sql>
+    <!-- 获取营业款主页分页集合 -->
+    <select id="getPageData" resultType="com.phone.erp.boss.vo.contact.RetailPayVo">
+          SELECT ID,NAME,CODE,SUM(TODAYPAY)TODAYPAY,SUM(TODAYINCOME)TODAYINCOME,SUM(TODAYINCOME)-SUM(TODAYPAY)TODAYBALANCE
+                FROM(
+                      SELECT TS.ID         AS ID,
+                            TS.NAME       AS NAME,
+                            TS.CODE       AS CODE,
+                            CASE WHEN T.RATIO = 1 THEN T1.PAYRECEIPT_AMOUT ELSE 0 END TODAYINCOME,
+                            CASE WHEN T.RATIO = -1 THEN T1.PAYRECEIPT_AMOUT ELSE 0 END TODAYPAY
+                       FROM I_PAYRECEIPT_MAIN T
+                           JOIN T_SECTION TS ON T.SECTION_ID = TS.ID
+                           JOIN I_PAYRECEIPT_DETAIL T1 ON T1.PAYRECEIPT_MAIL_ID = T.ID
+                           JOIN T_ACCOUNT TA ON TA.ID = T1.ACCOUNT_ID
+                           <include refid="queryCondition"/>
+                )GROUP BY ID,NAME,CODE
+                 ORDER BY CODE
+    </select>
+    <!-- 获取营业款主页总计行对象 -->
+    <select id="getTotalVo" resultType="com.phone.erp.boss.vo.contact.RetailPayVo">
+        SELECT SUM(TODAYINCOME)-SUM(TODAYPAY)TODAYBALANCE
+            FROM(
+                SELECT
+                        CASE WHEN T.RATIO = 1 THEN T1.PAYRECEIPT_AMOUT ELSE 0 END TODAYINCOME,
+                        CASE WHEN T.RATIO = -1 THEN T1.PAYRECEIPT_AMOUT ELSE 0 END TODAYPAY
+                      FROM I_PAYRECEIPT_MAIN T
+                        JOIN T_SECTION TS ON T.SECTION_ID = TS.ID
+                        JOIN I_PAYRECEIPT_DETAIL T1 ON T1.PAYRECEIPT_MAIL_ID = T.ID
+                        JOIN T_ACCOUNT TA ON TA.ID = T1.ACCOUNT_ID
+                        <include refid="queryCondition"/>
+                )
+    </select>
+    
+</mapper>
